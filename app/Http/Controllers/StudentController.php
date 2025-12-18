@@ -8,11 +8,34 @@ use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
-    public function index()
-    {
-        $students = Student::with(['course','gender','subjects'])->get();
-        return response()->json($students);
-    }
+    // public function index(Request $request)
+    // {
+
+    //      $perPage = $request->get('per_page', 5);
+         
+        
+    //     $students = Student::with(['course','gender','subjects']) ->paginate($perPage);
+    //     return response()->json($students);
+
+    // }
+
+    public function index(Request $request)
+{
+    $search = $request->search;
+
+    $students = Student::with(['gender', 'course'])
+        ->when($search, function ($query, $search) {
+            $query->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhereHas('course', function ($q) use ($search) {
+                      $q->where('course_name', 'LIKE', "%{$search}%");
+                  });
+        })
+        ->paginate(5);
+
+    return response()->json($students);
+}
+
 
     public function store(Request $request)
     {
@@ -27,6 +50,9 @@ class StudentController extends Controller
             'subject_ids' => 'nullable|array',
             'subject_ids.*' => 'integer|exists:subjects,id',
         ]);
+
+
+        
 
         $student = Student::create([
             'name' => $validated['name'],
